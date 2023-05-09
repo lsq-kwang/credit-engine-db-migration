@@ -1,0 +1,24 @@
+# This is a subset of the options available to deploy this
+# application. For documentation, see
+# https://github.com/lsqlabs/quickstart-helm/blob/main/values.yaml
+
+type: job
+
+livenessProbe:
+  probeType: exec
+  timeoutSeconds: 5
+
+readinessProbe:
+  probeType: exec
+  timeoutSeconds: 5
+
+podAnnotations:
+  sidecar.istio.io/inject: "false"
+
+# Flyway binary is built by user with UID 100,
+# the container must run as that user to be able
+# to call the binary
+podSecurityContext:
+  runAsUser: 100
+securityContext:
+  runAsUser: 100

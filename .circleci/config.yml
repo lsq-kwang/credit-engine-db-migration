@@ -1,0 +1,111 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+orbs:
+  orb-eks-deployment: lsqlabs/orb-eks-deployment@4
+
+jobs:
+  build:
+    executor:
+      name: orb-eks-deployment/docker
+    steps:
+      - orb-eks-deployment/standard_docker_build
+  deploy preview:
+    executor:
+      name: orb-eks-deployment/eks_runner
+      environment: dev
+    steps:
+      - orb-eks-deployment/preview_deployment
+  preview clean-up:
+    executor:
+      name: orb-eks-deployment/eks_runner
+      environment: dev
+    steps:
+      - orb-eks-deployment/preview_cleanup
+  deploy dev:
+    executor:
+      name: orb-eks-deployment/eks_runner
+      environment: dev
+    steps:
+      - orb-eks-deployment/standard_deployment:
+          environment: dev
+  deploy staging:
+    executor:
+      name: orb-eks-deployment/eks_runner
+      environment: staging
+    steps:
+      - orb-eks-deployment/standard_deployment:
+          environment: staging
+  deploy prod:
+    executor:
+      name: orb-eks-deployment/eks_runner
+      environment: prod
+    steps:
+      - orb-eks-deployment/standard_deployment:
+          environment: prod
+
+workflows:
+  Pipeline:
+    jobs:
+      - build:
+          context:
+            - aws-cli
+      # - deploy preview:
+      #     requires:
+      #       - build
+      #     filters:
+      #       branches:
+      #         ignore:
+      #           - /^hotfix.*/
+      #           - master
+      #           - main
+      #     context:
+      #       - aws-cli
+      # - Initiate preview clean-up:
+      #     type: approval
+      #     requires:
+      #       - deploy preview
+      # - preview clean-up:
+      #     requires:
+      #       - Initiate preview clean-up
+      - deploy dev:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - /^hotfix.*/
+                - master
+                - main
+          context:
+            - aws-cli
+      - promote to staging:
+          type: approval
+          requires:
+            - deploy dev
+      - deploy staging:
+          requires:
+            - promote to staging
+          filters:
+            branches:
+              only:
+                - /^hotfix.*/
+                - master
+                - main
+          context:
+            - aws-cli
+      - promote to prod:
+          type: approval
+          requires:
+            - deploy staging
+      - deploy prod:
+          requires:
+            - promote to prod
+          filters:
+            branches:
+              only:
+                - /^hotfix.*/
+                - master
+                - main
+          context:
+            - aws-cli
